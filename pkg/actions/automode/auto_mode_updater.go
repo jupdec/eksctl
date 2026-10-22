@@ -54,6 +54,9 @@ type Updater struct {
 	PodsGetter         corev1client.PodsGetter
 	EKSUpdater         EKSUpdater
 	Drainer            NodeGroupDrainer
+	// ElasticLoadBalancing is the requested load balancing capability config sent when enabling Auto Mode.
+	// It must be captured before the cluster state is refreshed, and defaults to enabled when unset.
+	ElasticLoadBalancing *ekstypes.ElasticLoadBalancing
 }
 
 // Update updates the cluster to match the autoModeConfig settings supplied in clusterConfig.
@@ -129,9 +132,7 @@ func (u *Updater) enableAutoMode(ctx context.Context, autoModeConfig *api.AutoMo
 		Name:          aws.String(clusterName),
 		ComputeConfig: computeConfigReq,
 		KubernetesNetworkConfig: &ekstypes.KubernetesNetworkConfigRequest{
-			ElasticLoadBalancing: &ekstypes.ElasticLoadBalancing{
-				Enabled: aws.Bool(true),
-			},
+			ElasticLoadBalancing: u.elasticLoadBalancing(),
 		},
 		StorageConfig: &ekstypes.StorageConfigRequest{
 			BlockStorage: &ekstypes.BlockStorage{
@@ -222,4 +223,11 @@ func (u *Updater) preflightCheck(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (u *Updater) elasticLoadBalancing() *ekstypes.ElasticLoadBalancing {
+	if u.ElasticLoadBalancing != nil {
+		return u.ElasticLoadBalancing
+	}
+	return &ekstypes.ElasticLoadBalancing{Enabled: aws.Bool(true)}
 }
